@@ -1,0 +1,110 @@
+# =============================================================================
+# CodeHunter Ignore File
+# Syntax: gitignore-style patterns
+# =============================================================================
+
+# Package Manager Directories
+node_modules/
+vendor/
+bower_components/
+
+# Build Directories
+dist/
+build/
+target/
+out/
+bin/
+obj/
+
+# Cache Directories
+.cache/
+.tmp/
+.temp/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# IDE/Editor
+.idea/
+.vscode/
+.vs/
+*.swp
+*.swo
+*~
+
+# Version Control
+.git/
+.svn/
+.hg/
+.bzr/
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env/
+virtualenv/
+
+# Minified Files (usually safe)
+*.min.js
+*.min.css
+*.bundle.js
+
+# Source Maps
+*.map
+*.js.map
+*.css.map
+
+# Lock Files
+package-lock.json
+yarn.lock
+composer.lock
+Cargo.lock
+Gemfile.lock
+poetry.lock
+
+# Logs
+*.log
+logs/
+
+# System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Backup Files
+*.bak
+*.backup
+*.old
+
+# Documentation (usually safe)
+docs/
+documentation/
+
+# Test Fixtures (may contain intentional "bad" patterns)
+tests/fixtures/
+test_data/
+__fixtures__/
+
+# Third-party libraries that are known safe
+# (uncomment if you trust these)
+# wp-includes/
+# wp-admin/
+# core/
+
+# Large media files
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+*.mp4
+*.avi
+*.mov
+*.mp3
+*.wav
+*.pdf
+*.doc
+*.docx
+*.xls
+*.xlsx
