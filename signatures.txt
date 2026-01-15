@@ -1,0 +1,166 @@
+# ============================================================================
+# CodeHunter Malware Signatures
+# Professionelle Signatursammlung für Web-Malware-Detection
+# ============================================================================
+# Format: pattern | name | description | severity | category
+# Severity: info, low, medium, high, critical
+# ============================================================================
+
+# ============================================================================
+# PHP BACKDOORS
+# ============================================================================
+
+eval\s*\(\s*base64_decode\s*\( | Base64 Eval | Base64-encoded PHP execution - common backdoor technique | critical | backdoor
+eval\s*\(\s*gzinflate\s*\( | Gzinflate Eval | Compressed PHP execution | critical | backdoor
+eval\s*\(\s*gzuncompress\s*\( | Gzuncompress Eval | Compressed PHP execution | critical | backdoor
+eval\s*\(\s*str_rot13\s*\( | ROT13 Eval | ROT13 obfuscated PHP execution | high | backdoor
+eval\s*\(\s*rawurldecode\s*\( | URL Decode Eval | URL-encoded PHP execution | high | backdoor
+eval\s*\(\s*stripslashes\s*\( | Stripslashes Eval | Obfuscated PHP execution | high | backdoor
+assert\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Assert Injection | PHP code injection via assert() | critical | injection
+preg_replace\s*\([^)]*['\"][^'\"]*e['\"] | Preg Replace Eval | Code execution via deprecated /e modifier | critical | injection
+create_function\s*\(\s*['\"][^'\"]*['\"],\s*\$_(GET|POST|REQUEST) | Create Function Injection | Dynamic function with user input | critical | injection
+call_user_func\s*\(\s*\$_(GET|POST|REQUEST) | Call User Func Injection | Dynamic function call with user input | critical | injection
+array_map\s*\(\s*\$_(GET|POST|REQUEST) | Array Map Injection | Array function with user callback | critical | injection
+
+# ============================================================================
+# SHELL EXECUTION
+# ============================================================================
+
+shell_exec\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Shell Exec Injection | Shell command with user input | critical | shell
+system\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | System Injection | System call with user input | critical | shell
+passthru\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Passthru Injection | Passthru with user input | critical | shell
+exec\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Exec Injection | Exec with user input | critical | shell
+popen\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Popen Injection | Popen with user input | critical | shell
+proc_open\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Proc Open Injection | Process with user input | critical | shell
+pcntl_exec\s*\( | PCNTL Exec | Process control execution | high | shell
+`\s*\$_(GET|POST|REQUEST|COOKIE) | Backtick Injection | Shell execution via backticks | critical | shell
+
+# ============================================================================
+# FILE OPERATIONS
+# ============================================================================
+
+file_put_contents\s*\([^)]*\$_(GET|POST|REQUEST) | File Write Injection | Writing user input to files | critical | file
+fwrite\s*\([^)]*\$_(GET|POST|REQUEST) | Fwrite Injection | Writing user input to files | critical | file
+fputs\s*\([^)]*\$_(GET|POST|REQUEST) | Fputs Injection | Writing user input to files | critical | file
+move_uploaded_file\s*\( | File Upload Handler | Check for proper validation | medium | upload
+copy\s*\([^)]*https?:// | Remote File Copy | Copying from remote URL | high | file
+file_get_contents\s*\([^)]*\$_(GET|POST|REQUEST) | Remote Include Risk | File read with user input | high | file
+
+# ============================================================================
+# FILE INCLUSION (LFI/RFI)
+# ============================================================================
+
+include\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Include Injection | Local/Remote file inclusion | critical | lfi
+require\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Require Injection | Local/Remote file inclusion | critical | lfi
+include_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Include Once Injection | File inclusion | critical | lfi
+require_once\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Require Once Injection | File inclusion | critical | lfi
+include\s*\(\s*['\"]https?:// | Remote Include | Direct remote file inclusion | critical | rfi
+require\s*\(\s*['\"]https?:// | Remote Require | Direct remote file inclusion | critical | rfi
+
+# ============================================================================
+# KNOWN WEBSHELLS
+# ============================================================================
+
+FilesMan | FilesMan Webshell | Known webshell signature | critical | webshell
+WSO\s+[0-9] | WSO Webshell | Web Shell by oRb | critical | webshell
+c99shell | C99 Shell | Famous PHP webshell | critical | webshell
+r57shell | R57 Shell | Famous PHP webshell | critical | webshell
+b374k | B374K Shell | B374K webshell | critical | webshell
+PAS_SHELL | Pas Shell | Pas webshell | critical | webshell
+Ani-Shell | Ani Shell | Ani-Shell webshell | critical | webshell
+PHPSPY | PHP Spy | PHP Spy webshell | critical | webshell
+Locus7Shell | Locus7 Shell | Locus7Shell webshell | critical | webshell
+dx\.php | DX Webshell | dx.php webshell | critical | webshell
+Safe0ver | Safe0ver Shell | Safe mode bypass shell | critical | webshell
+
+# ============================================================================
+# OBFUSCATION TECHNIQUES
+# ============================================================================
+
+\\x[0-9a-fA-F]{2}(\\x[0-9a-fA-F]{2}){15,} | Hex Encoded String | Long hex-encoded string | high | obfuscation
+chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)\s*\.\s*chr | Chr Concatenation | Character code obfuscation | medium | obfuscation
+base64_decode\s*\(\s*['\"][A-Za-z0-9+/=]{200,}['\"] | Long Base64 String | Long base64 encoded payload | high | obfuscation
+gzinflate\s*\(\s*base64_decode | Gzinflate Base64 | Compressed and encoded payload | critical | obfuscation
+str_replace\s*\([^)]{100,}\) | Complex Str Replace | Possible deobfuscation chain | medium | obfuscation
+strrev\s*\(\s*['\"][^'\"]{50,}['\"] | Reversed String | String reversal obfuscation | medium | obfuscation
+pack\s*\(\s*['\"]H\*['\"] | Hex Pack | Hex unpacking | medium | obfuscation
+
+# ============================================================================
+# JAVASCRIPT MALWARE
+# ============================================================================
+
+document\.write\s*\(\s*unescape\s*\( | Document Write Unescape | Obfuscated JS injection | high | javascript
+eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*[rd]\s*\) | Dean Edwards Packer | Packed JavaScript | medium | javascript
+String\.fromCharCode\s*\([^)]{100,}\) | FromCharCode Obfuscation | Long char code obfuscation | medium | javascript
+window\.location\s*=\s*['\"]https?:// | JS Redirect | JavaScript redirect | low | redirect
+top\.location\s*=\s*['\"]https?:// | JS Top Redirect | Frame-busting redirect | low | redirect
+document\.cookie\s*= | Cookie Manipulation | Cookie write operation | info | cookie
+
+# ============================================================================
+# SQL INJECTION IN CODE
+# ============================================================================
+
+\$_(GET|POST|REQUEST)\s*\[[^\]]+\]\s*\.\s*['\"] | SQL Concatenation | Direct SQL concatenation | high | sqli
+mysql_query\s*\([^)]*\$_(GET|POST|REQUEST) | MySQL Query Injection | Unescaped MySQL query | critical | sqli
+mysqli_query\s*\([^)]*\$_(GET|POST|REQUEST) | MySQLi Query Injection | Unescaped MySQLi query | critical | sqli
+->query\s*\([^)]*\$_(GET|POST|REQUEST) | PDO Query Injection | Unescaped PDO query | critical | sqli
+
+# ============================================================================
+# CRYPTO MINERS
+# ============================================================================
+
+coinhive | CoinHive Miner | Cryptocurrency mining script | high | miner
+cryptonight | CryptoNight Miner | Cryptocurrency mining | high | miner
+coin-hive\.com | CoinHive Domain | CoinHive mining service | high | miner
+minero\.cc | Minero Miner | Minero mining service | high | miner
+load\.jsecoin\.com | JSEcoin Miner | JSEcoin mining | high | miner
+webmine\.pro | Webmine Miner | Webmine service | high | miner
+
+# ============================================================================
+# SUSPICIOUS PATTERNS
+# ============================================================================
+
+\$_COOKIE\s*\[\s*['\"][a-z0-9]{1,3}['\"]\s*\] | Short Cookie Key | Suspiciously short cookie parameter | low | suspicious
+\$_(GET|POST)\s*\[\s*['\"][a-z0-9]{1,2}['\"]\s*\]\s*\( | Short Param Call | User input as function | high | suspicious
+\$\{['\"]\\x | Variable Obfuscation | Hex-escaped variable | high | obfuscation
+@\$_(GET|POST|REQUEST) | Suppressed User Input | Error-suppressed user input | medium | suspicious
+error_reporting\s*\(\s*0\s*\) | Error Suppression | Disabled error reporting | low | suspicious
+ini_set\s*\(['\"]display_errors | Display Errors Off | Error display disabled | low | suspicious
+set_time_limit\s*\(\s*0\s*\) | No Time Limit | Removed execution time limit | low | suspicious
+ignore_user_abort\s*\(\s*true\s*\) | Ignore User Abort | Script continues after disconnect | medium | suspicious
+
+# ============================================================================
+# UNSAFE DESERIALIZATION
+# ============================================================================
+
+unserialize\s*\(\s*\$_(GET|POST|REQUEST|COOKIE) | Unserialize Injection | Unsafe deserialization | critical | deserialization
+maybe_unserialize\s*\(\s*\$_(GET|POST|REQUEST) | WP Unserialize Injection | WordPress unsafe deserialization | critical | deserialization
+
+# ============================================================================
+# WORDPRESS SPECIFIC
+# ============================================================================
+
+wp_insert_user\s*\( | WP Insert User | User creation - check context | medium | wordpress
+add_user_meta\s*\([^)]*administrator | WP Admin Meta | Admin privilege assignment | high | wordpress
+update_option\s*\([^)]*siteurl | WP Siteurl Change | Site URL modification | high | wordpress
+update_option\s*\([^)]*home | WP Home Change | Home URL modification | high | wordpress
+wp_set_current_user\s*\(\s*1\s*\) | WP Switch to Admin | Switching to admin user | critical | wordpress
+add_action\s*\([^)]*wp_head[^)]*base64 | WP Malicious Hook | Base64 in wp_head hook | critical | wordpress
+
+# ============================================================================
+# MAILER ABUSE
+# ============================================================================
+
+mail\s*\(\s*\$_(GET|POST|REQUEST) | Mail Header Injection | Mail with user input | high | mail
+wp_mail\s*\([^)]*\$_(GET|POST|REQUEST) | WP Mail Injection | WordPress mail injection | high | mail
+@\s*mail\s*\( | Suppressed Mail | Error-suppressed mail | medium | mail
+
+# ============================================================================
+# NETWORK/BACKDOOR COMMUNICATION
+# ============================================================================
+
+fsockopen\s*\(\s*\$_(GET|POST|REQUEST) | Socket Connection | Socket with user input | critical | network
+curl_exec\s*\( | Curl Execution | Check for proper validation | low | network
+file_get_contents\s*\(['\"]https?:// | Remote Content Fetch | Fetching remote content | info | network
+socket_create\s*\( | Raw Socket | Raw socket creation | medium | network
+stream_socket_client\s*\( | Stream Socket | Stream socket client | medium | network
