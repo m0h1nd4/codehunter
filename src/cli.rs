@@ -1,7 +1,7 @@
 use clap::{Parser, ValueEnum};
 use std::path::PathBuf;
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     name = "codehunter",
     author = "Security Team",

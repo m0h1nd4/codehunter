@@ -10,7 +10,6 @@ use cli::Cli;
 use colored::Colorize;
 use pattern::{builtin_patterns, parse_pattern_file, Pattern};
 use scanner::{print_summary, Scanner};
-use std::path::Path;
 
 fn main() {
     env_logger::init();
