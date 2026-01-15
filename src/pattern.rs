@@ -158,53 +158,53 @@ fn parse_severity(s: &str) -> Option<Severity> {
 
 /// Common malware signature patterns (built-in)
 pub fn builtin_patterns(ignore_case: bool) -> Vec<Pattern> {
-    let patterns_data = vec![
+    let patterns_data: Vec<(&str, &str, &str, Severity, &str)> = vec![
         // PHP Backdoors
-        (r"eval\s*\(\s*base64_decode\s*\(", "Base64 Eval", "Encoded PHP execution - common backdoor", Severity::Critical, "backdoor"),
-        (r"eval\s*\(\s*gzinflate\s*\(", "Gzinflate Eval", "Compressed PHP execution", Severity::Critical, "backdoor"),
-        (r"eval\s*\(\s*gzuncompress\s*\(", "Gzuncompress Eval", "Compressed PHP execution", Severity::Critical, "backdoor"),
-        (r"eval\s*\(\s*str_rot13\s*\(", "ROT13 Eval", "Obfuscated PHP execution", Severity::High, "backdoor"),
-        (r"assert\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)", "Assert Injection", "PHP code injection via assert", Severity::Critical, "backdoor"),
-        (r"preg_replace\s*\([^)]*['\"][^'\"]*e['\"]", "Preg Replace Eval", "Code execution via preg_replace /e modifier", Severity::Critical, "backdoor"),
-        (r"create_function\s*\([^)]*\$_(GET|POST|REQUEST)", "Create Function Injection", "Dynamic function creation with user input", Severity::Critical, "backdoor"),
+        (r#"eval\s*\(\s*base64_decode\s*\("#, "Base64 Eval", "Encoded PHP execution - common backdoor", Severity::Critical, "backdoor"),
+        (r#"eval\s*\(\s*gzinflate\s*\("#, "Gzinflate Eval", "Compressed PHP execution", Severity::Critical, "backdoor"),
+        (r#"eval\s*\(\s*gzuncompress\s*\("#, "Gzuncompress Eval", "Compressed PHP execution", Severity::Critical, "backdoor"),
+        (r#"eval\s*\(\s*str_rot13\s*\("#, "ROT13 Eval", "Obfuscated PHP execution", Severity::High, "backdoor"),
+        (r#"assert\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)"#, "Assert Injection", "PHP code injection via assert", Severity::Critical, "backdoor"),
+        (r#"preg_replace\s*\([^)]*['"][^'"]*e['""]"#, "Preg Replace Eval", "Code execution via preg_replace /e modifier", Severity::Critical, "backdoor"),
+        (r#"create_function\s*\([^)]*\$_(GET|POST|REQUEST)"#, "Create Function Injection", "Dynamic function creation with user input", Severity::Critical, "backdoor"),
         
         // Shell Commands
-        (r"(shell_exec|system|passthru|exec|popen)\s*\(\s*\$", "Shell Execution", "Shell command with variable input", Severity::High, "shell"),
-        (r"(shell_exec|system|passthru|exec|popen)\s*\(\s*['\"]", "Shell Command", "Direct shell command execution", Severity::Medium, "shell"),
-        (r"`\s*\$_(GET|POST|REQUEST|COOKIE)", "Backtick Injection", "Shell execution via backticks", Severity::Critical, "shell"),
+        (r#"(shell_exec|system|passthru|exec|popen)\s*\(\s*\$"#, "Shell Execution", "Shell command with variable input", Severity::High, "shell"),
+        (r#"(shell_exec|system|passthru|exec|popen)\s*\(\s*['""]"#, "Shell Command", "Direct shell command execution", Severity::Medium, "shell"),
+        (r#"`\s*\$_(GET|POST|REQUEST|COOKIE)"#, "Backtick Injection", "Shell execution via backticks", Severity::Critical, "shell"),
         
         // File Operations
-        (r"(file_put_contents|fwrite|fputs)\s*\([^)]*\$_(GET|POST|REQUEST)", "File Write Injection", "Writing user input to files", Severity::Critical, "file"),
-        (r"(include|require|include_once|require_once)\s*\(\s*\$_(GET|POST|REQUEST)", "File Include Injection", "Local/Remote file inclusion", Severity::Critical, "lfi"),
-        (r"(move_uploaded_file)\s*\(", "File Upload", "File upload handler - check for validation", Severity::Medium, "upload"),
+        (r#"(file_put_contents|fwrite|fputs)\s*\([^)]*\$_(GET|POST|REQUEST)"#, "File Write Injection", "Writing user input to files", Severity::Critical, "file"),
+        (r#"(include|require|include_once|require_once)\s*\(\s*\$_(GET|POST|REQUEST)"#, "File Include Injection", "Local/Remote file inclusion", Severity::Critical, "lfi"),
+        (r#"(move_uploaded_file)\s*\("#, "File Upload", "File upload handler - check for validation", Severity::Medium, "upload"),
         
         // Webshells
-        (r"FilesMan|WSO|c99|r57|b374k", "Known Webshell", "Known webshell signature", Severity::Critical, "webshell"),
-        (r"\$_(GET|POST|REQUEST|COOKIE)\s*\[\s*['\"][a-z0-9]{1,3}['\"]\s*\]", "Short Parameter", "Suspiciously short parameter names", Severity::Low, "suspicious"),
+        (r#"FilesMan|WSO|c99|r57|b374k"#, "Known Webshell", "Known webshell signature", Severity::Critical, "webshell"),
+        (r#"\$_(GET|POST|REQUEST|COOKIE)\s*\[\s*['"][a-z0-9]{1,3}['"]\s*\]"#, "Short Parameter", "Suspiciously short parameter names", Severity::Low, "suspicious"),
         
         // Obfuscation
-        (r"\\x[0-9a-fA-F]{2}(\\x[0-9a-fA-F]{2}){10,}", "Hex Encoded", "Long hex-encoded string", Severity::High, "obfuscation"),
-        (r"chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)", "Chr Concatenation", "Character code obfuscation", Severity::Medium, "obfuscation"),
-        (r"base64_decode\s*\(\s*['\"][A-Za-z0-9+/=]{100,}['\"]", "Long Base64", "Long base64 encoded string", Severity::High, "obfuscation"),
+        (r#"\\x[0-9a-fA-F]{2}(\\x[0-9a-fA-F]{2}){10,}"#, "Hex Encoded", "Long hex-encoded string", Severity::High, "obfuscation"),
+        (r#"chr\s*\(\s*\d+\s*\)\s*\.\s*chr\s*\(\s*\d+\s*\)"#, "Chr Concatenation", "Character code obfuscation", Severity::Medium, "obfuscation"),
+        (r#"base64_decode\s*\(\s*['"][A-Za-z0-9+/=]{100,}['""]"#, "Long Base64", "Long base64 encoded string", Severity::High, "obfuscation"),
         
         // JavaScript Malware
-        (r"document\.write\s*\(\s*unescape\s*\(", "Document Write Unescape", "Obfuscated JavaScript injection", Severity::High, "javascript"),
-        (r"eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*[rd]\s*\)", "JavaScript Packer", "Packed/obfuscated JavaScript", Severity::Medium, "javascript"),
-        (r"String\.fromCharCode\s*\([^)]{50,}\)", "FromCharCode Obfuscation", "Character code obfuscation in JS", Severity::Medium, "javascript"),
+        (r#"document\.write\s*\(\s*unescape\s*\("#, "Document Write Unescape", "Obfuscated JavaScript injection", Severity::High, "javascript"),
+        (r#"eval\s*\(\s*function\s*\(\s*p\s*,\s*a\s*,\s*c\s*,\s*k\s*,\s*e\s*,\s*[rd]\s*\)"#, "JavaScript Packer", "Packed/obfuscated JavaScript", Severity::Medium, "javascript"),
+        (r#"String\.fromCharCode\s*\([^)]{50,}\)"#, "FromCharCode Obfuscation", "Character code obfuscation in JS", Severity::Medium, "javascript"),
         
         // SQL Injection Patterns (in code)
-        (r"\$_(GET|POST|REQUEST)\s*\[[^\]]+\]\s*\.", "SQL Concatenation", "Direct user input in SQL query", Severity::High, "sqli"),
+        (r#"\$_(GET|POST|REQUEST)\s*\[[^\]]+\]\s*\."#, "SQL Concatenation", "Direct user input in SQL query", Severity::High, "sqli"),
         
         // Crypto Miners
-        (r"coinhive|cryptonight|minero|coin-hive", "Crypto Miner", "Cryptocurrency mining script", Severity::High, "miner"),
+        (r#"coinhive|cryptonight|minero|coin-hive"#, "Crypto Miner", "Cryptocurrency mining script", Severity::High, "miner"),
         
         // Malicious Redirects
-        (r"header\s*\(\s*['\"]Location:\s*https?://[^'\"]+", "Redirect", "HTTP redirect - verify destination", Severity::Low, "redirect"),
-        (r"window\.location\s*=\s*['\"]https?://", "JS Redirect", "JavaScript redirect", Severity::Low, "redirect"),
+        (r#"header\s*\(\s*['"]Location:\s*https?://[^'""]+"#, "Redirect", "HTTP redirect - verify destination", Severity::Low, "redirect"),
+        (r#"window\.location\s*=\s*['"]https?://"#, "JS Redirect", "JavaScript redirect", Severity::Low, "redirect"),
         
         // Suspicious Functions
-        (r"(unserialize|maybe_unserialize)\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)", "Unserialize Injection", "Unsafe deserialization", Severity::Critical, "deserialization"),
-        (r"call_user_func(_array)?\s*\(\s*\$", "Dynamic Call", "Dynamic function call with variable", Severity::High, "dynamic"),
+        (r#"(unserialize|maybe_unserialize)\s*\(\s*\$_(GET|POST|REQUEST|COOKIE)"#, "Unserialize Injection", "Unsafe deserialization", Severity::Critical, "deserialization"),
+        (r#"call_user_func(_array)?\s*\(\s*\$"#, "Dynamic Call", "Dynamic function call with variable", Severity::High, "dynamic"),
     ];
 
     patterns_data
