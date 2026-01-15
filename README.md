@@ -153,7 +153,7 @@ RUSTFLAGS="-C target-cpu=native" cargo build --release
 
 ## 📜 Lizenz
 
-MIT License
+Apache 2.0 License
 
 ## 🤝 Entwickelt für
 
