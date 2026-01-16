@@ -14,6 +14,8 @@ CodeHunter ist ein blitzschnelles CLI-Tool zur Analyse von Code-Dateien auf Malw
 - 🔒 **Built-in Signatures** - Vorkonfigurierte Malware-Patterns
 - ⚙️ **Gitignore-Style** - Flexible Ignore-Patterns
 - 📈 **Fortschrittsanzeige** - Live-Progress-Bar während des Scans
+- 📦 **GZ-Support** - Direkte Analyse von .gz-Dateien ohne Entpacken (Streaming-Decompression)
+- 💾 **Chunk-Processing** - Speichereffiziente Verarbeitung von Multi-GB-Dateien
 
 ## 🚀 Installation
 
@@ -61,7 +63,7 @@ OPTIONS:
     -c, --context <N>               Context lines before/after matches [default: 0]
     -r, --recursive                 Scan subdirectories [default: true]
         --no-recursive              Disable recursive scanning
-    -i, --ignore-file <FILE>        Path to gitignore-style ignore file
+    -I, --ignore-file <FILE>        Path to gitignore-style ignore file
         --ignore <PATTERN>          Additional patterns to ignore (repeatable)
     -e, --extensions <EXT,EXT>      File extensions to scan (comma-separated)
         --max-size <SIZE>           Maximum file size [default: 50MB]
@@ -69,6 +71,7 @@ OPTIONS:
         --literal                   Treat patterns as literal strings
     -i, --ignore-case               Case-insensitive matching
         --no-progress               Disable progress bar
+        --file-progress             Show progress per file (for large files)
     -q, --quiet                     Quiet mode
     -v, --verbose                   Verbose output
         --encoding <ENCODING>       Force specific encoding
@@ -134,12 +137,46 @@ Wenn keine Pattern angegeben werden, verwendet CodeHunter automatisch eine Samml
 - **JavaScript**: Packed code, fromCharCode-Obfuscation
 - **Crypto Miners**: CoinHive und ähnliche
 
+## 📦 GZ-Dateien und große Dateien
+
+### Komprimierte Dateien (.gz)
+
+CodeHunter kann .gz-Dateien direkt scannen - ohne sie vorher auf die Festplatte zu entpacken:
+
+```bash
+# Scannt automatisch .gz-Dateien (z.B. source-code.php.gz)
+codehunter -t /downloads -f signatures.txt --format html -o report.html
+
+# Mit Fortschrittsanzeige pro Datei
+codehunter -t archive.tar.gz -f signatures.txt --file-progress
+```
+
+**Vorteile:**
+- Streaming-Decompression (wie bei Hashcat)
+- Kein temporärer Speicherplatz benötigt
+- Automatische Erkennung von Code-Dateien in .gz (z.B. `backup.php.gz`)
+
+### Große Dateien (Multi-GB)
+
+Für sehr große Dateien verwendet CodeHunter automatisch Chunk-Processing:
+
+```bash
+# Große Textdateien scannen (z.B. 2GB Logs)
+codehunter -t /logs -p "error|critical" --max-size "5GB" --file-progress
+```
+
+**Funktionsweise:**
+- Dateien >100MB werden in Chunks von 10.000 Zeilen verarbeitet
+- Minimaler RAM-Verbrauch auch bei Multi-GB-Dateien
+- `--file-progress` zeigt Bytes und Zeilen pro Datei
+
 ## ⚡ Performance-Tipps
 
 1. **Einschränken der Extensions**: `--extensions php,js,html`
 2. **Ignore-Patterns nutzen**: `--ignore "*.min.js" --ignore "vendor/"`
 3. **Maximale Dateigröße setzen**: `--max-size 10MB`
 4. **Threads anpassen**: `--threads 8`
+5. **File-Progress für große Dateien**: `--file-progress` für Echtzeit-Fortschritt
 
 ## 🏗️ Kompilierung für maximale Performance
 
