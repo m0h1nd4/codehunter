@@ -89,23 +89,31 @@ pub fn parse_patterns_from_string(content: &str, literal: bool, ignore_case: boo
         }
 
         // Check if line has metadata (pipe-separated)
-        let parts: Vec<&str> = line.split('|').map(|s| s.trim()).collect();
+        // Parse from right to left: last 4 fields are metadata, everything before is the pattern
+        // This allows patterns to contain | characters (e.g., regex alternation)
+        let parts: Vec<&str> = line.split('|').collect();
 
-        let pattern = if parts.len() >= 2 {
-            // Has metadata
-            let pattern_str = parts[0];
-            let name = parts.get(1).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
-            let description = parts.get(2).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
-            let severity = parts.get(3)
+        let pattern = if parts.len() >= 5 {
+            // Has full metadata (pattern | name | description | severity | category)
+            // Join all parts except the last 4 as the pattern
+            let pattern_str = parts[..parts.len() - 4]
+                .iter()
+                .map(|s| s.trim())
+                .collect::<Vec<_>>()
+                .join("|");
+            let name = parts.get(parts.len() - 4).map(|s| s.trim()).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+            let description = parts.get(parts.len() - 3).map(|s| s.trim()).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+            let severity = parts.get(parts.len() - 2)
+                .map(|s| s.trim())
                 .and_then(|s| parse_severity(s))
                 .unwrap_or(Severity::Medium);
-            let category = parts.get(4).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
+            let category = parts.get(parts.len() - 1).map(|s| s.trim()).and_then(|s| if s.is_empty() { None } else { Some(s.to_string()) });
 
-            Pattern::new(pattern_str, literal, ignore_case)
+            Pattern::new(&pattern_str, literal, ignore_case)
                 .with_context(|| format!("Invalid pattern at line {}: {}", line_num + 1, pattern_str))?
                 .with_metadata(name, description, severity, category)
         } else {
-            // No metadata
+            // No metadata or incomplete metadata - treat entire line as pattern
             Pattern::new(&line, literal, ignore_case)
                 .with_context(|| format!("Invalid pattern at line {}: {}", line_num + 1, line))?
         };

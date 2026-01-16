@@ -50,6 +50,9 @@ env_logger = "0.10"
 # Memory Mapping für große Dateien
 memmap2 = "0.9"
 
+# Compression (gz, zip, etc.)
+flate2 = "1.0"
+
 # Zeitstempel
 chrono = { version = "0.4", features = ["serde"] }
 

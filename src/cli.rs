@@ -50,7 +50,7 @@ pub struct Cli {
     pub no_recursive: bool,
 
     /// Path to ignore file (gitignore-style syntax)
-    #[arg(short, long)]
+    #[arg(short = 'I', long)]
     pub ignore_file: Option<PathBuf>,
 
     /// Additional patterns to ignore (can be used multiple times)
@@ -80,6 +80,10 @@ pub struct Cli {
     /// Disable progress bar
     #[arg(long)]
     pub no_progress: bool,
+
+    /// Show progress bar for each file (useful for large files)
+    #[arg(long)]
+    pub file_progress: bool,
 
     /// Quiet mode - only output errors
     #[arg(short, long)]

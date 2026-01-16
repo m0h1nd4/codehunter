@@ -1,4 +1,5 @@
 mod cli;
+mod compression;
 mod encoding;
 mod output;
 mod pattern;

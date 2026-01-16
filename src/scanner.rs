@@ -1,4 +1,5 @@
 use crate::cli::{Cli, Severity, default_extensions, default_ignore_patterns};
+use crate::compression::{detect_compression, CompressionType, scan_file_chunked as chunked_scan, scan_file_chunked_with_progress};
 use crate::encoding::{is_binary, read_file_with_encoding, EncodingInfo, get_encoding_suggestion};
 use crate::pattern::Pattern;
 use anyhow::{Context, Result};
@@ -13,6 +14,11 @@ use std::fs::{self, File};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+
+/// Threshold for using chunked scanning (100MB decompressed estimate)
+const CHUNKED_SCAN_THRESHOLD: u64 = 100 * 1024 * 1024;
+/// Chunk size for large file scanning (10,000 lines at a time)
+const CHUNK_SIZE: usize = 10_000;
 
 /// A single match found in a file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -270,9 +276,26 @@ impl Scanner {
                         continue;
                     }
 
-                    // Check extension
+                    // Check extension - also handle .gz files
                     if let Some(ext) = path.extension() {
                         let ext_str = ext.to_string_lossy().to_lowercase();
+
+                        // Handle compressed files (e.g., file.php.gz)
+                        if ext_str == "gz" || ext_str == "gzip" {
+                            // Check if the inner extension is valid
+                            if let Some(inner_ext) = self.get_inner_extension(path) {
+                                if self.extensions.contains(&inner_ext) {
+                                    files.push(path.to_path_buf());
+                                    continue;
+                                }
+                            }
+                            // Also allow .gz files if user wants all files
+                            if self.cli.no_binary_detection {
+                                files.push(path.to_path_buf());
+                            }
+                            continue;
+                        }
+
                         if !self.extensions.contains(&ext_str) {
                             continue;
                         }
@@ -292,6 +315,15 @@ impl Scanner {
         }
 
         Ok(files)
+    }
+
+    /// Get the inner extension for compressed files (e.g., "php" from "file.php.gz")
+    fn get_inner_extension(&self, path: &Path) -> Option<String> {
+        let stem = path.file_stem()?;
+        let stem_path = Path::new(stem);
+        stem_path.extension()
+            .and_then(|e| e.to_str())
+            .map(|e| e.to_lowercase())
     }
 
     fn scan_file(
@@ -327,8 +359,33 @@ impl Scanner {
 
         let file_size = metadata.len();
 
-        // Check file size
-        if file_size > self.max_file_size {
+        // Check for compressed files
+        let compression = match detect_compression(path) {
+            Ok(c) => c,
+            Err(e) => {
+                error_count.fetch_add(1, Ordering::Relaxed);
+                return FileResult {
+                    path: path.to_path_buf(),
+                    relative_path,
+                    matches: vec![],
+                    file_size,
+                    encoding: "error".to_string(),
+                    encoding_suggestion: None,
+                    error: Some(format!("Failed to detect compression: {}", e)),
+                };
+            }
+        };
+
+        // For compressed files, we estimate decompressed size and use chunked scanning
+        // Typical compression ratio for text is 5-10x, so we multiply by 10 for safety
+        let estimated_size = if compression.is_compressed {
+            file_size * 10
+        } else {
+            file_size
+        };
+
+        // Check file size (for uncompressed files, use actual size; for compressed, be more lenient)
+        if !compression.is_compressed && file_size > self.max_file_size {
             skipped_size.fetch_add(1, Ordering::Relaxed);
             return FileResult {
                 path: path.to_path_buf(),
@@ -341,6 +398,21 @@ impl Scanner {
             };
         }
 
+        // Use chunked scanning for large files or compressed files
+        let use_chunked = compression.is_compressed || estimated_size > CHUNKED_SCAN_THRESHOLD;
+
+        if use_chunked {
+            return self.scan_file_chunked(
+                path,
+                &relative_path,
+                file_size,
+                compression.is_compressed,
+                total_bytes,
+                error_count,
+            );
+        }
+
+        // Standard scanning for smaller uncompressed files
         // Read file content (try memory mapping for large files)
         let content_result = if file_size > 1024 * 1024 && !self.cli.no_binary_detection {
             // Use mmap for large files
@@ -438,6 +510,129 @@ impl Scanner {
             encoding: encoding_info.encoding.name().to_string(),
             encoding_suggestion,
             error: None,
+        }
+    }
+
+    /// Scan a file using chunked reading - for large files and compressed files
+    fn scan_file_chunked(
+        &self,
+        path: &Path,
+        relative_path: &str,
+        file_size: u64,
+        is_compressed: bool,
+        total_bytes: &AtomicU64,
+        error_count: &AtomicU64,
+    ) -> FileResult {
+        let patterns = &self.patterns;
+        let context_lines = self.cli.context;
+        let show_file_progress = self.cli.file_progress && !self.cli.quiet && !self.cli.no_progress;
+
+        // Create file progress bar if enabled
+        let file_pb = if show_file_progress {
+            let pb = ProgressBar::new_spinner();
+            let file_name = path.file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            pb.set_style(
+                ProgressStyle::default_spinner()
+                    .template("  {spinner:.green} {msg}")
+                    .unwrap()
+            );
+            pb.set_message(format!("{}: starting...", file_name));
+            Some(pb)
+        } else {
+            None
+        };
+
+        let file_name_for_progress = path.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown")
+            .to_string();
+
+        // Use the chunked scanner with progress
+        let scan_result = scan_file_chunked_with_progress(
+            path,
+            CHUNK_SIZE,
+            context_lines,
+            |_line_number, line| {
+                let mut line_matches = Vec::new();
+                for (pattern_idx, pattern) in patterns.iter().enumerate() {
+                    for mat in pattern.regex.find_iter(line) {
+                        line_matches.push((mat.start() + 1, pattern_idx, mat.as_str().to_string()));
+                    }
+                }
+                line_matches
+            },
+            |bytes_read, lines_processed| {
+                if let Some(ref pb) = file_pb {
+                    pb.set_message(format!(
+                        "{}: {} processed, {} lines",
+                        file_name_for_progress,
+                        bytesize::ByteSize(bytes_read),
+                        lines_processed
+                    ));
+                    pb.tick();
+                }
+            },
+        );
+
+        // Finish progress bar
+        if let Some(pb) = file_pb {
+            pb.finish_and_clear();
+        }
+
+        match scan_result {
+            Ok((chunked_matches, bytes_read)) => {
+                total_bytes.fetch_add(bytes_read, Ordering::Relaxed);
+
+                // Convert ChunkedMatch to Match
+                let matches: Vec<Match> = chunked_matches
+                    .into_iter()
+                    .map(|cm| {
+                        let pattern = &patterns[cm.pattern_index];
+                        Match {
+                            line_number: cm.line_number,
+                            column: cm.column,
+                            matched_text: cm.matched_text,
+                            line_content: cm.line_content,
+                            context_before: cm.context_before,
+                            context_after: cm.context_after,
+                            pattern_name: pattern.name.clone(),
+                            pattern_original: pattern.original.clone(),
+                            severity: pattern.severity,
+                            category: pattern.category.clone(),
+                        }
+                    })
+                    .collect();
+
+                let encoding_str = if is_compressed {
+                    "gzip (streamed)".to_string()
+                } else {
+                    "utf-8 (chunked)".to_string()
+                };
+
+                FileResult {
+                    path: path.to_path_buf(),
+                    relative_path: relative_path.to_string(),
+                    matches,
+                    file_size,
+                    encoding: encoding_str,
+                    encoding_suggestion: None,
+                    error: None,
+                }
+            }
+            Err(e) => {
+                error_count.fetch_add(1, Ordering::Relaxed);
+                FileResult {
+                    path: path.to_path_buf(),
+                    relative_path: relative_path.to_string(),
+                    matches: vec![],
+                    file_size,
+                    encoding: "error".to_string(),
+                    encoding_suggestion: None,
+                    error: Some(format!("Failed to scan file: {}", e)),
+                }
+            }
         }
     }
 
